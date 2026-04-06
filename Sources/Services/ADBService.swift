@@ -21,13 +21,34 @@ enum ADBError: LocalizedError {
 }
 
 actor ADBService {
+    static let adbPathKey = "adbPath"
+
     var adbPath: String
+    var adbFound: Bool
 
     init() {
-        self.adbPath = ADBService.resolveADBPath()
+        let (path, found) = ADBService.resolveADBPath()
+        self.adbPath = path
+        self.adbFound = found
     }
 
-    private static func resolveADBPath() -> String {
+    func updateADBPath(_ path: String) {
+        self.adbPath = path
+        self.adbFound = FileManager.default.isExecutableFile(atPath: path)
+        if adbFound {
+            UserDefaults.standard.set(path, forKey: ADBService.adbPathKey)
+        }
+    }
+
+    static func resolveADBPath() -> (path: String, found: Bool) {
+        // 1. Check user-configured path from UserDefaults
+        if let saved = UserDefaults.standard.string(forKey: adbPathKey),
+           !saved.isEmpty,
+           FileManager.default.isExecutableFile(atPath: saved) {
+            return (saved, true)
+        }
+
+        // 2. Check well-known candidate locations
         let candidates = [
             NSHomeDirectory() + "/Library/Android/sdk/platform-tools/adb",
             "/opt/homebrew/bin/adb",
@@ -35,16 +56,18 @@ actor ADBService {
         ]
         for path in candidates {
             if FileManager.default.isExecutableFile(atPath: path) {
-                return path
+                return (path, true)
             }
         }
-        // Try `which adb`
+
+        // 3. Try `which adb`
         if let resolved = try? runSyncProcess("/usr/bin/which", arguments: ["adb"]).stdout.trimmingCharacters(in: .whitespacesAndNewlines),
            !resolved.isEmpty,
            FileManager.default.isExecutableFile(atPath: resolved) {
-            return resolved
+            return (resolved, true)
         }
-        return "adb" // fallback, will fail with a clear error
+
+        return ("adb", false)
     }
 
     private static func runSyncProcess(_ executable: String, arguments: [String]) throws -> (stdout: String, stderr: String) {

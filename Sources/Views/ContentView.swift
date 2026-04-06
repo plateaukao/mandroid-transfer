@@ -19,11 +19,19 @@ struct ContentView: View {
         }
         .frame(minWidth: 700, minHeight: 450)
         .task {
+            await appState.checkADBAvailability()
             await appState.deviceManager.refreshDevices()
             if appState.deviceManager.selectedDevice != nil {
                 await appState.detectStorageVolumes()
                 await appState.navigateTo(path: "/sdcard")
             }
+        }
+        .sheet(isPresented: Binding(
+            get: { appState.showADBSetup },
+            set: { appState.showADBSetup = $0 }
+        )) {
+            ADBSetupView()
+                .environment(appState)
         }
         .alert("Error", isPresented: Binding(
             get: { appState.showError },

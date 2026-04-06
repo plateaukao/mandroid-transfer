@@ -30,6 +30,9 @@ final class AppState {
     // Bookmarks
     var bookmarks: [Bookmark] = Bookmark.builtIn + AppState.loadCustomBookmarks()
 
+    // ADB setup
+    var showADBSetup = false
+
     // View options
     var sortOrder: SortOrder = .name
     var sortAscending = true
@@ -56,6 +59,21 @@ final class AppState {
         self.cache = cache
         self.deviceManager = DeviceManager(adbService: adb, cache: cache)
         self.transferManager = TransferManager(adbService: adb, cache: cache)
+    }
+
+    func checkADBAvailability() async {
+        let found = await adbService.adbFound
+        if !found {
+            showADBSetup = true
+        }
+    }
+
+    func setADBPath(_ path: String) async {
+        await adbService.updateADBPath(path)
+        let found = await adbService.adbFound
+        if found {
+            showADBSetup = false
+        }
     }
 
     var canGoBack: Bool { historyIndex > 0 }
