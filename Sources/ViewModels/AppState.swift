@@ -35,6 +35,7 @@ final class AppState {
     var sortAscending = true
     var showHiddenFiles = false
     var searchText = ""
+    var showSearch = false
 
     // Services
     var deviceManager: DeviceManager

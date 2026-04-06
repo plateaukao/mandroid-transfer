@@ -32,6 +32,8 @@ struct SidebarView: View {
                 .labelsHidden()
                 .onChange(of: appState.deviceManager.selectedDevice) { _, newDevice in
                     if newDevice != nil {
+                        appState.searchText = ""
+                        appState.showSearch = false
                         Task {
                             await appState.detectStorageVolumes()
                             await appState.navigateTo(path: "/sdcard")

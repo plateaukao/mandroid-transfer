@@ -8,14 +8,13 @@ struct FileListView: View {
     @State private var newFolderName = ""
     @State private var showDeleteConfirmation = false
     @State private var filesToDelete: [AndroidFile] = []
-    @State private var showSearch = false
 
     var body: some View {
         @Bindable var appState = appState
 
         VStack(spacing: 0) {
             // Search bar (above breadcrumb)
-            if showSearch {
+            if appState.showSearch {
                 searchBar
                 Divider()
             }
@@ -348,12 +347,12 @@ struct FileListView: View {
 
         ToolbarItem {
             Button {
-                showSearch.toggle()
-                if !showSearch {
+                appState.showSearch.toggle()
+                if !appState.showSearch {
                     appState.searchText = ""
                 }
             } label: {
-                Image(systemName: showSearch ? "magnifyingglass.circle.fill" : "magnifyingglass")
+                Image(systemName: appState.showSearch ? "magnifyingglass.circle.fill" : "magnifyingglass")
             }
             .help("Search files")
             .keyboardShortcut("f", modifiers: .command)
