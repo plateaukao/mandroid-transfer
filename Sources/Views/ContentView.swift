@@ -18,6 +18,7 @@ struct ContentView: View {
             }
         }
         .frame(minWidth: 700, minHeight: 450)
+        .navigationTitle(appState.deviceManager.selectedDevice.map { "Mandroid — \($0.serial)" } ?? "Mandroid")
         .task {
             await appState.checkADBAvailability()
             await appState.deviceManager.refreshDevices()
