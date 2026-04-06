@@ -9,7 +9,6 @@ struct Bookmark: Identifiable, Codable, Hashable {
     var id: String { path }
 
     static let builtIn: [Bookmark] = [
-        Bookmark(name: "Internal Storage", path: "/sdcard", icon: "internaldrive", isBuiltIn: true),
         Bookmark(name: "Download", path: "/sdcard/Download", icon: "arrow.down.circle", isBuiltIn: true),
         Bookmark(name: "DCIM", path: "/sdcard/DCIM", icon: "camera", isBuiltIn: true),
         Bookmark(name: "Documents", path: "/sdcard/Documents", icon: "doc", isBuiltIn: true),

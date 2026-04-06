@@ -4,8 +4,8 @@ import Foundation
 @MainActor
 final class AppState {
     // Navigation
-    var currentPath: String = "/sdcard"
-    var pathHistory: [String] = ["/sdcard"]
+    var currentPath: String = "/sdcard/Download"
+    var pathHistory: [String] = ["/sdcard/Download"]
     var historyIndex: Int = 0
 
     // Directory listing
@@ -204,6 +204,22 @@ final class AppState {
             historyIndex = pathHistory.count - 1
             currentPath = path
         }
+    }
+
+    func navigateToDefaultFolder() async {
+        guard let device = deviceManager.selectedDevice else { return }
+        // Try /sdcard/Download first; fall back to /sdcard if it doesn't exist
+        do {
+            let files = try await adbService.listDirectory(device: device.serial, path: "/sdcard/Download")
+            await cache.set(device: device.serial, path: "/sdcard/Download", files: files)
+            currentFiles = files
+            updateNavigation(to: "/sdcard/Download")
+            isLoading = false
+            return
+        } catch {
+            // /sdcard/Download not available, fall back
+        }
+        await navigateTo(path: "/sdcard")
     }
 
     func navigateUp() async {

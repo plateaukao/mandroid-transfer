@@ -23,7 +23,7 @@ struct ContentView: View {
             await appState.deviceManager.refreshDevices()
             if appState.deviceManager.selectedDevice != nil {
                 await appState.detectStorageVolumes()
-                await appState.navigateTo(path: "/sdcard")
+                await appState.navigateToDefaultFolder()
             }
         }
         .sheet(isPresented: Binding(

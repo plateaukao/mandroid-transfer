@@ -23,6 +23,27 @@ struct SidebarView: View {
             if appState.deviceManager.devices.isEmpty {
                 Label("No devices connected", systemImage: "antenna.radiowaves.left.and.right.slash")
                     .foregroundStyle(.secondary)
+            } else if appState.deviceManager.devices.count < 3 {
+                ForEach(appState.deviceManager.devices) { device in
+                    let isSelected = appState.deviceManager.selectedDevice == device
+                    Button {
+                        appState.deviceManager.selectedDevice = device
+                    } label: {
+                        deviceRow(device)
+                    }
+                    .buttonStyle(.plain)
+                    .fontWeight(isSelected ? .semibold : .regular)
+                }
+                .onChange(of: appState.deviceManager.selectedDevice) { _, newDevice in
+                    if newDevice != nil {
+                        appState.searchText = ""
+                        appState.showSearch = false
+                        Task {
+                            await appState.detectStorageVolumes()
+                            await appState.navigateToDefaultFolder()
+                        }
+                    }
+                }
             } else {
                 Picker("Device", selection: $appState.deviceManager.selectedDevice) {
                     ForEach(appState.deviceManager.devices) { device in
@@ -36,7 +57,7 @@ struct SidebarView: View {
                         appState.showSearch = false
                         Task {
                             await appState.detectStorageVolumes()
-                            await appState.navigateTo(path: "/sdcard")
+                            await appState.navigateToDefaultFolder()
                         }
                     }
                 }
