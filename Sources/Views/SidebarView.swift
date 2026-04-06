@@ -18,7 +18,7 @@ struct SidebarView: View {
     private var deviceSection: some View {
         @Bindable var appState = appState
 
-        Section("Device") {
+        Section {
             if appState.deviceManager.devices.isEmpty {
                 Label("No devices connected", systemImage: "antenna.radiowaves.left.and.right.slash")
                     .foregroundStyle(.secondary)
@@ -34,6 +34,19 @@ struct SidebarView: View {
                         Task { await appState.navigateTo(path: "/sdcard") }
                     }
                 }
+            }
+        } header: {
+            HStack {
+                Text("Device")
+                Spacer()
+                Button {
+                    Task { await appState.deviceManager.refreshDevices() }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.caption)
+                }
+                .buttonStyle(.plain)
+                .help("Refresh device list")
             }
         }
     }

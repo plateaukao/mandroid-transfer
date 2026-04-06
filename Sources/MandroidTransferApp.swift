@@ -53,21 +53,6 @@ struct MandroidTransferApp: App {
                 ))
                 .keyboardShortcut(".", modifiers: [.command, .shift])
 
-                Divider()
-
-                Picker("Sort By", selection: Binding(
-                    get: { appState.sortOrder },
-                    set: { appState.sortOrder = $0 }
-                )) {
-                    ForEach(AppState.SortOrder.allCases, id: \.self) { order in
-                        Text(order.rawValue).tag(order)
-                    }
-                }
-
-                Toggle("Ascending", isOn: Binding(
-                    get: { appState.sortAscending },
-                    set: { appState.sortAscending = $0 }
-                ))
             }
         }
     }

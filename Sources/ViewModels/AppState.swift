@@ -70,9 +70,9 @@ final class AppState {
         }
 
         files.sort { a, b in
-            // Directories always first
-            if a.isDirectory != b.isDirectory {
-                return a.isDirectory
+            // Directories and navigable symlinks first
+            if a.isNavigable != b.isNavigable {
+                return a.isNavigable
             }
             let result: Bool
             switch sortOrder {

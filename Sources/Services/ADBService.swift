@@ -129,7 +129,9 @@ actor ADBService {
     }
 
     func listDirectory(device: String, path: String) async throws -> [AndroidFile] {
-        let output = try await shellCommand(device: device, command: "ls -la \(shellEscape(path))")
+        // Append trailing slash so `ls` follows symlinks and lists contents
+        let listPath = path.hasSuffix("/") ? path : path + "/"
+        let output = try await shellCommand(device: device, command: "ls -la \(shellEscape(listPath))")
         return Self.parseLsOutput(output, parentPath: path)
     }
 

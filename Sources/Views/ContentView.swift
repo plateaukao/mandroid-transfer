@@ -19,9 +19,7 @@ struct ContentView: View {
         }
         .frame(minWidth: 700, minHeight: 450)
         .task {
-            appState.deviceManager.startPolling()
-            // Wait briefly for device discovery, then load
-            try? await Task.sleep(for: .seconds(1))
+            await appState.deviceManager.refreshDevices()
             if appState.deviceManager.selectedDevice != nil {
                 await appState.navigateTo(path: "/sdcard")
             }

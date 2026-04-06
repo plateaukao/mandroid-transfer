@@ -104,28 +104,77 @@ struct FileListView: View {
         .background(.bar)
     }
 
+    // MARK: - Column Header
+
+    private var columnHeader: some View {
+        HStack(spacing: 10) {
+            // Spacer for icon column
+            Color.clear.frame(width: 20, height: 1)
+
+            sortButton(label: "Name", order: .name)
+
+            Spacer()
+
+            sortButton(label: "Size", order: .size)
+                .frame(width: 80, alignment: .trailing)
+
+            sortButton(label: "Date Modified", order: .date)
+                .frame(width: 120, alignment: .trailing)
+        }
+        .font(.callout)
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 24)
+        .padding(.vertical, 3)
+        .fixedSize(horizontal: false, vertical: true)
+        .background(.bar)
+    }
+
+    private func sortButton(label: String, order: AppState.SortOrder) -> some View {
+        Button {
+            if appState.sortOrder == order {
+                appState.sortAscending.toggle()
+            } else {
+                appState.sortOrder = order
+                appState.sortAscending = true
+            }
+        } label: {
+            HStack(spacing: 3) {
+                Text(label)
+                if appState.sortOrder == order {
+                    Image(systemName: appState.sortAscending ? "chevron.up" : "chevron.down")
+                        .font(.caption2)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
     // MARK: - File List
 
     private var fileList: some View {
-        List(selection: Binding(
-            get: { appState.selectedFileIDs },
-            set: { appState.selectedFileIDs = $0 }
-        )) {
-            ForEach(appState.sortedFiles) { file in
-                FileRowView(file: file)
-                    .tag(file.id)
-                    .draggable(fileDragItem(for: file))
-                    .onTapGesture(count: 2) {
-                        handleDoubleTap(file)
-                    }
-                    .contextMenu {
-                        fileContextMenu(for: file)
-                    }
+        VStack(spacing: 0) {
+            columnHeader
+            Divider()
+            List(selection: Binding(
+                get: { appState.selectedFileIDs },
+                set: { appState.selectedFileIDs = $0 }
+            )) {
+                ForEach(appState.sortedFiles) { file in
+                    FileRowView(file: file)
+                        .tag(file.id)
+                        .draggable(fileDragItem(for: file))
+                        .onTapGesture(count: 2) {
+                            handleDoubleTap(file)
+                        }
+                        .contextMenu {
+                            fileContextMenu(for: file)
+                        }
+                }
             }
-        }
-        .listStyle(.inset(alternatesRowBackgrounds: true))
-        .contextMenu {
-            backgroundContextMenu
+            .listStyle(.inset(alternatesRowBackgrounds: true))
+            .contextMenu {
+                backgroundContextMenu
+            }
         }
     }
 
@@ -210,17 +259,6 @@ struct FileListView: View {
         }
 
         ToolbarItem {
-            Picker("Sort", selection: Binding(
-                get: { appState.sortOrder },
-                set: { appState.sortOrder = $0 }
-            )) {
-                ForEach(AppState.SortOrder.allCases, id: \.self) { order in
-                    Text(order.rawValue).tag(order)
-                }
-            }
-        }
-
-        ToolbarItem {
             Toggle(isOn: Binding(
                 get: { appState.showHiddenFiles },
                 set: { appState.showHiddenFiles = $0 }
@@ -242,7 +280,7 @@ struct FileListView: View {
 
     @ViewBuilder
     private func fileContextMenu(for file: AndroidFile) -> some View {
-        if file.isDirectory {
+        if file.isNavigable {
             Button("Open") {
                 Task { await appState.navigateTo(path: file.path) }
             }
@@ -286,7 +324,7 @@ struct FileListView: View {
     // MARK: - Actions
 
     private func handleDoubleTap(_ file: AndroidFile) {
-        if file.isDirectory {
+        if file.isNavigable {
             Task { await appState.navigateTo(path: file.path) }
         } else {
             pullFileToMac(file)

@@ -14,6 +14,11 @@ struct AndroidFile: Identifiable, Hashable, Sendable {
 
     var id: String { path }
 
+    /// True for directories or symlinks that point to directories.
+    /// Symlinks to directories show permissions starting with 'l' but their target is a directory.
+    /// We treat all symlinks as potentially navigable since we can't know the target type without stat.
+    var isNavigable: Bool { isDirectory || isSymlink }
+
     var fileExtension: String {
         (name as NSString).pathExtension.lowercased()
     }
@@ -32,8 +37,7 @@ struct AndroidFile: Identifiable, Hashable, Sendable {
     var formattedDate: String {
         guard let date = modifiedDate else { return "—" }
         let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .short
+        formatter.dateFormat = "yyyy-MM-dd HH:mm"
         return formatter.string(from: date)
     }
 

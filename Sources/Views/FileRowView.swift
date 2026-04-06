@@ -29,8 +29,9 @@ struct FileRowView: View {
 
             Text(file.formattedDate)
                 .foregroundStyle(.secondary)
-                .frame(width: 140, alignment: .trailing)
+                .frame(width: 120, alignment: .trailing)
                 .font(.callout)
+                .lineLimit(1)
         }
         .padding(.vertical, 2)
     }
