@@ -1,7 +1,14 @@
 import SwiftUI
 
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        NSApp.setActivationPolicy(.regular)
+    }
+}
+
 @main
 struct MandroidTransferApp: App {
+    @NSApplicationDelegateAdaptor private var appDelegate: AppDelegate
     @State private var appState = AppState()
 
     var body: some Scene {

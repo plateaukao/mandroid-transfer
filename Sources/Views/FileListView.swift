@@ -162,10 +162,6 @@ struct FileListView: View {
                 ForEach(appState.sortedFiles) { file in
                     FileRowView(file: file)
                         .tag(file.id)
-                        .draggable(fileDragItem(for: file))
-                        .onTapGesture(count: 2) {
-                            handleDoubleTap(file)
-                        }
                         .contextMenu {
                             fileContextMenu(for: file)
                         }
@@ -175,18 +171,64 @@ struct FileListView: View {
             .contextMenu {
                 backgroundContextMenu
             }
+            .onKeyPress(.return) {
+                openSelected()
+                return .handled
+            }
         }
     }
 
-    private func fileDragItem(for file: AndroidFile) -> DragItem {
-        let device = appState.deviceManager.selectedDevice?.serial ?? ""
-        return DragItem(
-            fileName: file.name,
-            remotePath: file.path,
-            deviceSerial: device,
-            isDirectory: file.isDirectory,
-            transferManager: appState.transferManager
-        )
+    private func openSelected() {
+        guard let fileID = appState.selectedFileIDs.first,
+              let file = appState.sortedFiles.first(where: { $0.id == fileID }) else { return }
+        handleDoubleTap(file)
+    }
+
+    private func makeDragProvider(for file: AndroidFile) -> NSItemProvider {
+        guard let device = appState.deviceManager.selectedDevice?.serial else {
+            return NSItemProvider()
+        }
+
+        // If the dragged file is part of a multi-selection, drag all selected files
+        let filesToDrag: [AndroidFile]
+        if appState.selectedFileIDs.contains(file.id) && appState.selectedFileIDs.count > 1 {
+            filesToDrag = appState.sortedFiles.filter { appState.selectedFileIDs.contains($0.id) }
+        } else {
+            filesToDrag = [file]
+        }
+
+        let provider = NSItemProvider()
+        let transferManager = appState.transferManager
+
+        // Register a file representation for each file to drag
+        for dragFile in filesToDrag {
+            let remotePath = dragFile.path
+            let fileName = dragFile.name
+            provider.registerFileRepresentation(
+                forTypeIdentifier: UTType.data.identifier,
+                fileOptions: [],
+                visibility: .all
+            ) { completion in
+                Task { @MainActor in
+                    do {
+                        let url = try await transferManager.pullToTemporaryLocation(
+                            device: device,
+                            remotePath: remotePath
+                        )
+                        completion(url, true, nil)
+                    } catch {
+                        completion(nil, false, error)
+                    }
+                }
+                return nil
+            }
+            provider.suggestedName = fileName
+        }
+
+        // Also register plain text path for internal bookmark drops
+        provider.registerObject(file.path as NSString, visibility: .all)
+
+        return provider
     }
 
     // MARK: - Empty States
@@ -278,28 +320,41 @@ struct FileListView: View {
 
     // MARK: - Context Menus
 
+    /// Returns the right-clicked file plus any other selected files.
+    private func affectedFiles(for file: AndroidFile) -> [AndroidFile] {
+        if appState.selectedFileIDs.contains(file.id) && appState.selectedFileIDs.count > 1 {
+            return appState.sortedFiles.filter { appState.selectedFileIDs.contains($0.id) }
+        }
+        return [file]
+    }
+
     @ViewBuilder
     private func fileContextMenu(for file: AndroidFile) -> some View {
-        if file.isNavigable {
+        let files = affectedFiles(for: file)
+        let count = files.count
+
+        if count == 1, file.isNavigable {
             Button("Open") {
                 Task { await appState.navigateTo(path: file.path) }
             }
             Divider()
         }
 
-        Button("Pull to Mac…") {
-            pullFileToMac(file)
+        Button(count > 1 ? "Pull \(count) Items to Mac…" : "Pull to Mac…") {
+            pullFilesToMac(files)
         }
 
-        Button("Copy Path") {
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(file.path, forType: .string)
+        if count == 1 {
+            Button("Copy Path") {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(file.path, forType: .string)
+            }
         }
 
         Divider()
 
-        Button("Delete", role: .destructive) {
-            filesToDelete = [file]
+        Button(count > 1 ? "Delete \(count) Items" : "Delete", role: .destructive) {
+            filesToDelete = files
             showDeleteConfirmation = true
         }
     }
@@ -327,25 +382,44 @@ struct FileListView: View {
         if file.isNavigable {
             Task { await appState.navigateTo(path: file.path) }
         } else {
-            pullFileToMac(file)
+            pullFilesToMac([file])
         }
     }
 
-    private func pullFileToMac(_ file: AndroidFile) {
+    private func pullFilesToMac(_ files: [AndroidFile]) {
         guard let device = appState.deviceManager.selectedDevice else { return }
 
-        let panel = NSSavePanel()
-        panel.nameFieldStringValue = file.name
-        panel.canCreateDirectories = true
-
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-
-        Task {
-            await appState.transferManager.pullFile(
-                device: device.serial,
-                remotePath: file.path,
-                toLocal: url.path
-            )
+        if files.count == 1, let file = files.first {
+            // Single file: use save panel
+            let panel = NSSavePanel()
+            panel.nameFieldStringValue = file.name
+            panel.canCreateDirectories = true
+            guard panel.runModal() == .OK, let url = panel.url else { return }
+            Task {
+                await appState.transferManager.pullFile(
+                    device: device.serial,
+                    remotePath: file.path,
+                    toLocal: url.path
+                )
+            }
+        } else {
+            // Multiple files: pick a destination folder
+            let panel = NSOpenPanel()
+            panel.canChooseFiles = false
+            panel.canChooseDirectories = true
+            panel.canCreateDirectories = true
+            panel.prompt = "Save Here"
+            guard panel.runModal() == .OK, let folder = panel.url else { return }
+            for file in files {
+                let dest = folder.appendingPathComponent(file.name).path
+                Task {
+                    await appState.transferManager.pullFile(
+                        device: device.serial,
+                        remotePath: file.path,
+                        toLocal: dest
+                    )
+                }
+            }
         }
     }
 
