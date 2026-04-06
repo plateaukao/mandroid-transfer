@@ -17,6 +17,16 @@ final class AppState {
     // Selection
     var selectedFileIDs: Set<String> = []
 
+    // Storage volumes (detected per-device)
+    var storageVolumes: [StorageVolume] = []
+
+    struct StorageVolume: Identifiable {
+        let name: String
+        let path: String
+        let icon: String
+        var id: String { path }
+    }
+
     // Bookmarks
     var bookmarks: [Bookmark] = Bookmark.builtIn + AppState.loadCustomBookmarks()
 
@@ -86,6 +96,45 @@ final class AppState {
             return sortAscending ? result : !result
         }
         return files
+    }
+
+    // MARK: - Storage Detection
+
+    func detectStorageVolumes() async {
+        guard let device = deviceManager.selectedDevice else {
+            storageVolumes = []
+            return
+        }
+
+        do {
+            // List /storage/ to find all mounted volumes
+            let output = try await adbService.shellCommand(device: device.serial, command: "ls -1 /storage/")
+            var volumes: [StorageVolume] = []
+            let entries = output.components(separatedBy: "\n").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+
+            // These are all aliases for internal storage, not real SD cards
+            let internalAliases: Set<String> = ["emulated", "self", "sdcard0"]
+
+            for entry in entries {
+                if internalAliases.contains(entry) {
+                    if !volumes.contains(where: { $0.name == "Internal Storage" }) {
+                        volumes.append(StorageVolume(name: "Internal Storage", path: "/sdcard", icon: "internaldrive"))
+                    }
+                } else {
+                    let path = "/storage/\(entry)"
+                    volumes.append(StorageVolume(name: "SD Card (\(entry))", path: path, icon: "sdcard"))
+                }
+            }
+
+            // Fallback: always ensure internal storage is listed
+            if volumes.isEmpty {
+                volumes.append(StorageVolume(name: "Internal Storage", path: "/sdcard", icon: "internaldrive"))
+            }
+
+            storageVolumes = volumes
+        } catch {
+            storageVolumes = [StorageVolume(name: "Internal Storage", path: "/sdcard", icon: "internaldrive")]
+        }
     }
 
     // MARK: - Navigation

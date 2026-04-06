@@ -8,6 +8,7 @@ struct SidebarView: View {
     var body: some View {
         List {
             deviceSection
+            storageSection
             bookmarksSection
         }
         .listStyle(.sidebar)
@@ -31,7 +32,10 @@ struct SidebarView: View {
                 .labelsHidden()
                 .onChange(of: appState.deviceManager.selectedDevice) { _, newDevice in
                     if newDevice != nil {
-                        Task { await appState.navigateTo(path: "/sdcard") }
+                        Task {
+                            await appState.detectStorageVolumes()
+                            await appState.navigateTo(path: "/sdcard")
+                        }
                     }
                 }
             }
@@ -60,6 +64,28 @@ struct SidebarView: View {
                     .foregroundStyle(.secondary)
             }
         }
+    }
+
+    @ViewBuilder
+    private var storageSection: some View {
+        if !appState.storageVolumes.isEmpty {
+            Section("Storage") {
+                ForEach(appState.storageVolumes) { volume in
+                    storageRow(volume)
+                }
+            }
+        }
+    }
+
+    private func storageRow(_ volume: AppState.StorageVolume) -> some View {
+        let isActive = appState.currentPath.hasPrefix(volume.path)
+        return Button {
+            Task { await appState.navigateTo(path: volume.path) }
+        } label: {
+            Label(volume.name, systemImage: volume.icon)
+        }
+        .buttonStyle(.plain)
+        .fontWeight(isActive ? .semibold : .regular)
     }
 
     @ViewBuilder
