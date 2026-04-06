@@ -17,6 +17,9 @@ final class AppState {
     // Selection
     var selectedFileIDs: Set<String> = []
 
+    // Internal drag state (paths of files currently being dragged)
+    var draggedPaths: [String] = []
+
     // Storage volumes (detected per-device)
     var storageVolumes: [StorageVolume] = []
 

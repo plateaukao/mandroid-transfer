@@ -197,19 +197,33 @@ struct FileListView: View {
                 ForEach(appState.sortedFiles) { file in
                     FileRowView(file: file)
                         .tag(file.id)
-                        .contextMenu {
-                            fileContextMenu(for: file)
+                        .onDrag {
+                            let provider = makeDragProvider(for: file)
+                            // Store paths in shared state for internal drops (sidebar bookmarks)
+                            if appState.selectedFileIDs.contains(file.id) && appState.selectedFileIDs.count > 1 {
+                                appState.draggedPaths = appState.sortedFiles
+                                    .filter { appState.selectedFileIDs.contains($0.id) }
+                                    .map(\.path)
+                            } else {
+                                appState.draggedPaths = [file.path]
+                            }
+                            return provider
                         }
                 }
             }
             .listStyle(.inset(alternatesRowBackgrounds: true))
-            .contextMenu {
-                backgroundContextMenu
-            }
-            .onKeyPress(.return) {
-                openSelected()
-                return .handled
-            }
+            .contextMenu(forSelectionType: String.self, menu: { selectedIDs in
+                if selectedIDs.isEmpty {
+                    backgroundContextMenu
+                } else if let fileID = selectedIDs.first,
+                          let file = appState.sortedFiles.first(where: { $0.id == fileID }) {
+                    fileContextMenu(for: file)
+                }
+            }, primaryAction: { selectedIDs in
+                guard let fileID = selectedIDs.first,
+                      let file = appState.sortedFiles.first(where: { $0.id == fileID }) else { return }
+                handleDoubleTap(file)
+            })
         }
     }
 

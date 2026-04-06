@@ -99,6 +99,12 @@ struct SidebarView: View {
             .onMove { source, destination in
                 appState.moveBookmark(from: source, to: destination)
             }
+
+            if isBookmarkDropTargeted {
+                Label("Drop to add bookmark", systemImage: "plus.circle")
+                    .foregroundStyle(.secondary)
+                    .font(.caption)
+            }
         }
         .onDrop(of: [.utf8PlainText], isTargeted: $isBookmarkDropTargeted) { providers in
             handleBookmarkDrop(providers)
@@ -124,18 +130,13 @@ struct SidebarView: View {
     }
 
     private func handleBookmarkDrop(_ providers: [NSItemProvider]) -> Bool {
-        for provider in providers {
-            provider.loadItem(forTypeIdentifier: UTType.utf8PlainText.identifier) { data, _ in
-                guard let data = data as? Data,
-                      let path = String(data: data, encoding: .utf8),
-                      path.hasPrefix("/") else { return }
-
-                let name = (path as NSString).lastPathComponent
-                Task { @MainActor in
-                    appState.addBookmark(name: name, path: path)
-                }
-            }
+        let paths = appState.draggedPaths
+        guard !paths.isEmpty else { return false }
+        for path in paths where path.hasPrefix("/") {
+            let name = (path as NSString).lastPathComponent
+            appState.addBookmark(name: name, path: path)
         }
+        appState.draggedPaths = []
         return true
     }
 }
