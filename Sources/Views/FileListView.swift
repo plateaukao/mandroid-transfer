@@ -8,11 +8,18 @@ struct FileListView: View {
     @State private var newFolderName = ""
     @State private var showDeleteConfirmation = false
     @State private var filesToDelete: [AndroidFile] = []
+    @State private var showSearch = false
 
     var body: some View {
         @Bindable var appState = appState
 
         VStack(spacing: 0) {
+            // Search bar (above breadcrumb)
+            if showSearch {
+                searchBar
+                Divider()
+            }
+
             // Breadcrumb path bar
             breadcrumbBar
 
@@ -101,6 +108,35 @@ struct FileListView: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
         }
+        .background(.bar)
+    }
+
+    // MARK: - Search Bar
+
+    private var searchBar: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.secondary)
+                .font(.caption)
+            TextField("Filter by name…", text: Binding(
+                get: { appState.searchText },
+                set: { appState.searchText = $0 }
+            ))
+            .textFieldStyle(.plain)
+            .font(.callout)
+            if !appState.searchText.isEmpty {
+                Button {
+                    appState.searchText = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                        .font(.caption)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 4)
         .background(.bar)
     }
 
@@ -308,6 +344,19 @@ struct FileListView: View {
                 Image(systemName: "eye")
             }
             .help("Show hidden files")
+        }
+
+        ToolbarItem {
+            Button {
+                showSearch.toggle()
+                if !showSearch {
+                    appState.searchText = ""
+                }
+            } label: {
+                Image(systemName: showSearch ? "magnifyingglass.circle.fill" : "magnifyingglass")
+            }
+            .help("Search files")
+            .keyboardShortcut("f", modifiers: .command)
         }
 
         ToolbarItem {

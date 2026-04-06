@@ -34,6 +34,7 @@ final class AppState {
     var sortOrder: SortOrder = .name
     var sortAscending = true
     var showHiddenFiles = false
+    var searchText = ""
 
     // Services
     var deviceManager: DeviceManager
@@ -77,6 +78,10 @@ final class AppState {
         var files = currentFiles
         if !showHiddenFiles {
             files = files.filter { !$0.isHidden }
+        }
+        if !searchText.isEmpty {
+            let query = searchText.lowercased()
+            files = files.filter { $0.name.lowercased().contains(query) }
         }
 
         files.sort { a, b in
